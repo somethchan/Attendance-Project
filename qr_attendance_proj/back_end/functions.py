@@ -63,35 +63,26 @@ def load_private_key(key_dir):
 
 # [Function]: QR Generation
 def qr_gen(df_1, date, course_dir, key_dir):
-    # [Generate]: QR code folder named qr_png
     output_dir = course_dir
 
-    # [Configuration]: Public Key Path
-    public_key = load_pubkey(key_dir)
-
     for index, row in df_1.iterrows():
-        # [Configuration]: Initial QR Data
         qr_data = f"{row['Username']}|{date}"
 
-        # [Configuration]: Encrypt QR Data
-        encrypted_data = rsa.encrypt(qr_data.encode(), public_key)
-        encoded_data = base64.urlsafe_b64encode(encrypted_data).decode()
+        encoded_data = encrypt_qr_data(qr_data, key_dir)
 
-        # [Configuration]: QR code parameters
         qr = qrcode.QRCode(
-                box_size=10,
-                border=4,
+            box_size=10,
+            border=4,
         )
         qr.add_data(encoded_data)
         qr.make(fit=True)
-        print(encoded_data)
-        # [Configuration]: QR File name/QR Color
+
         qr_path = os.path.join(output_dir, f"{row['Username']}.png")
         img = qr.make_image(fill="black", back_color="white")
         img.save(qr_path)
 
-        # [Print]: QR Generation Progress
         print(f"QR code for {row['Username']} generated {index + 1}/{len(df_1)}")
+
 
 # [Function]: Prompt user to continue
 def prompt_user(message):
@@ -137,12 +128,52 @@ def create_df(input):
         df.to_csv(ATTENDANCE_FILE, index=False)
         return df
 
-# [Function]: Decrypt Encrypted QR Data
-def decrypt_qr_data(encoded_data, key_dir):
-    private_key = load_rsa_private_key(key_dir)
+# [Function]: Encrypted QR Data
+def encrypt_qr_data(plaintext: str, key_dir: str) -> str:
+    recipient_pub = load_pubkey(key_dir)
 
-    encoded_data = encoded_data.strip()
-    encrypted_data = base64.urlsafe_b64decode(encoded_data)
-    decrypted_bytes = rsa.decrypt(encrypted_data, private_key)
-    decrypted_message = decrypted_bytes.decode()
-    return decrypted_message
+    eph_priv = x25519.X25519PrivateKey.generate()
+    eph_pub = eph_priv.public_key()
+
+    shared = eph_priv.exchange(recipient_pub)
+
+    key = HKDF(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=None,
+        info=b"attendance-qr",
+    ).derive(shared)
+
+    nonce = os.urandom(12)
+    ct = AESGCM(key).encrypt(nonce, plaintext.encode(), None)
+
+    eph_pub_bytes = eph_pub.public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+
+    blob = eph_pub_bytes + nonce + ct
+    return base64.urlsafe_b64encode(blob).decode()
+
+# [Function]: Decrypt QR Data
+def decrypt_qr_data(encoded_data: str, key_dir: str) -> str:
+    private_key = load_private_key(key_dir)
+
+    blob = base64.urlsafe_b64decode(encoded_data.strip().encode())
+    eph_pub_bytes = blob[:32]
+    nonce = blob[32:44]
+    ct = blob[44:]
+
+    eph_pub = x25519.X25519PublicKey.from_public_bytes(eph_pub_bytes)
+    shared = private_key.exchange(eph_pub)
+
+    key = HKDF(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=None,
+        info=b"attendance-qr",
+    ).derive(shared)
+
+    pt = AESGCM(key).decrypt(nonce, ct, None)
+    return pt.decode()
+
