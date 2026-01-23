@@ -1,11 +1,12 @@
 # Takes <date>, <course>
 
 # /opt/jobs/qr_gen.py
-import sys, os 
+import sys, os
 import pandas as pd
 from functions import qr_gen
 from functions import key_gen
 from pathlib import Path
+
 print(">>> qr_gen.py executed")
 
 # Length check for argv
@@ -14,10 +15,11 @@ if len(sys.argv) != 3:
     raise SystemExit(2)
 
 # Read tokens passed in the initial script call
-date, course = sys.argv[1:3]
+date     = sys.argv[1]
+course   = sys.argv[2]
 
-# ------------- FILE CONFIGS --------------- 
-nfs_dir = "/home/attendance/roster_files/spring_25"
+# ------------- FILE CONFIGS ---------------
+nfs_dir = "/home/nfs"
 file_path = os.path.join(nfs_dir, course, "roster.csv")
 
 # Make folder to store QR codes
@@ -29,7 +31,7 @@ key_dir = f"/etc/attendance/keys/{course}"
 if not os.path.isdir(key_dir):
     os.makedirs(key_dir, exist_ok=True)
 key_gen(course)
-# ------------------------------------------ 
+# ------------------------------------------
 
 # Read roster file into dataframe
 try:
