@@ -159,8 +159,13 @@ def encrypt_qr_data(plaintext: str, key_dir: str) -> str:
 # [Function]: Decrypt QR Data
 def decrypt_qr_data(encoded_data: str, key_dir: str) -> str:
     private_key = load_private_key(key_dir)
+    s = encoded_data.strip()
+    s += "=" * (-len(s) % 4)
+    blob = base64.urlsafe_b64decode(s.encode())
+    
+    if len(blob) < 32 + 12 + 16:
+        raise ValueError(f"Ciphertext too short ({len(blob)} bytes). QR scan likely truncated.")
 
-    blob = base64.urlsafe_b64decode(encoded_data.strip().encode())
     eph_pub_bytes = blob[:32]
     nonce = blob[32:44]
     ct = blob[44:]
@@ -177,4 +182,3 @@ def decrypt_qr_data(encoded_data: str, key_dir: str) -> str:
 
     pt = AESGCM(key).decrypt(nonce, ct, None)
     return pt.decode()
-
