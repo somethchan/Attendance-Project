@@ -27,10 +27,10 @@ course_dir = f"/var/lib/attendance/{course}"
 if not os.path.isdir(course_dir):
     os.makedirs(course_dir, exist_ok=True)
 # Make folder to store public key
-key_dir = f"/etc/attendance/keys/{course}"
+key_dir = f"/tmp/attendance/keys/{course}"
 if not os.path.isdir(key_dir):
     os.makedirs(key_dir, exist_ok=True)
-key_gen(course)
+key_gen(key_dir)
 # ------------------------------------------
 
 # Read roster file into dataframe
@@ -50,4 +50,4 @@ df_1['Username'] = df_1['Username'].str.lstrip('#').str.strip()
 print(df_1)
 
 # [Call]: QR generation function
-qr_gen(df_1,date,course_dir, key_dir)
+qr_gen(df_1, date, course_dir, key_dir)
