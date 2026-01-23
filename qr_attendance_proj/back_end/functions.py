@@ -1,4 +1,3 @@
-
 # [Import Statements]: Libraries
 import smtplib
 import qrcode
@@ -65,7 +64,7 @@ def qr_gen(df_1, date, course_dir, key_dir):
 
         # [Configuration]: Encrypt QR Data
         encrypted_data = rsa.encrypt(qr_data.encode(), public_key)
-        encoded_data = base64.b64encode(encrypted_data).decode()
+        encoded_data = base64.urlsafe_b64encode(encrypted_data).decode()
 
         # [Configuration]: QR code parameters
         qr = qrcode.QRCode(
@@ -75,7 +74,7 @@ def qr_gen(df_1, date, course_dir, key_dir):
         )
         qr.add_data(encoded_data)
         qr.make(fit=True)
-
+        print(encoded_data)
         # [Configuration]: QR File name/QR Color
         qr_path = os.path.join(output_dir, f"{row['Username']}.png")
         img = qr.make_image(fill="black", back_color="white")
@@ -98,7 +97,7 @@ def prompt_user(message):
             print("Invalid input. Please enter 'y' for yes or 'n' for no.")
 
 # [Function]: Email skeleton
-def send(smtp_server, smtp_port, sender_email, student_email, subject, body, fpath):
+def send(smtp_server, smtp_port, sender_email, student_email, fpath, subject, body):
     message = MIMEMultipart()
     message['From'] = sender_email
     message['To'] = student_email
@@ -132,7 +131,8 @@ def create_df(input):
 def decrypt_qr_data(encoded_data, key_dir):
     private_key = load_rsa_private_key(key_dir)
 
-    encrypted_data = base64.b64decode(encoded_data)
+    encoded_data = encoded_data.strip()
+    encrypted_data = base64.urlsafe_b64decode(encoded_data)
     decrypted_bytes = rsa.decrypt(encrypted_data, private_key)
     decrypted_message = decrypted_bytes.decode()
     return decrypted_message
