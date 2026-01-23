@@ -8,14 +8,16 @@ import re
 import base64
 
 # [Import Statements]: Functions
+from cryptography.hazmat.primitives.asymmetric import x25519
+from cryptography.hazmat.primitives import serialization
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 
 # [Function]: encryption keygen
-def key_gen(course):
+def key_gen(directory):
     # [Configuration]: Key directory
-    key_dir = f"/etc/attendance/keys/{course}"
+    key_dir = directory
     os.makedirs(key_dir, exist_ok=True)
 
     priv_path = os.path.join(key_dir, "private_key.pem")
@@ -26,29 +28,38 @@ def key_gen(course):
         return
 
     # [Generate]: Public/Private key
-    publicKey, privateKey = rsa.newkeys(2048)
+    private_key = x25519.X25519PrivateKey.generate()
+    public_key = private_key.public_key()
 
-    with open(priv_path, "wb") as priv_file:
-        priv_file.write(privateKey.save_pkcs1("PEM"))
-    with open(pub_path, "wb") as pub_file:
-        pub_file.write(publicKey.save_pkcs1("PEM"))
-
+    with open(priv_path, "wb") as f:
+        f.write(
+            private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+        )
+    with open(pub_path, "wb") as f:
+        f.write(
+            public_key.public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
+        )
+        
 # [Function]: load public key
 def load_pubkey(key_dir):
-    #  [Configuration]: public key path
-    key_path=os.path.join(key_dir, "public_key.pem")
-    with open(key_path, "rb") as pub_file:
-        key_data = pub_file.read()
-        public_key = rsa.PublicKey.load_pkcs1(key_data)
-    return public_key
+    key_path = os.path.join(key_dir, "public_key.pem")
+    with open(key_path, "rb") as f:
+        key_data = f.read()
+    return serialization.load_pem_public_key(key_data)
 
-# [Function]: Load RSA Private Key
-def load_rsa_private_key(key_dir):
-    key_path=os.path.join(key_dir, "private_key.pem")
-    with open(key_path, "rb") as priv_file:
-        key_data = priv_file.read()
-        private_key = rsa.PrivateKey.load_pkcs1(key_data)
-    return private_key
+# [Function]: load private key
+def load_private_key(key_dir):
+    key_path = os.path.join(key_dir, "private_key.pem")
+    with open(key_path, "rb") as f:
+        key_data = f.read()
+    return serialization.load_pem_private_key(key_data, password=None)
 
 # [Function]: QR Generation
 def qr_gen(df_1, date, course_dir, key_dir):
@@ -68,7 +79,6 @@ def qr_gen(df_1, date, course_dir, key_dir):
 
         # [Configuration]: QR code parameters
         qr = qrcode.QRCode(
-                version=6,
                 box_size=10,
                 border=4,
         )
