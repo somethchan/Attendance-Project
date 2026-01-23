@@ -1,4 +1,4 @@
-# Takes <enc_text> <course>
+# Takes <enc_text> <date> <course>
 
 # /opt/jobs/scan.py
 import sys, os, sqlite3
@@ -19,7 +19,7 @@ course   = sys.argv[3]
 
 
 # ------------- FILE CONFIGS ---------------
-key_dir = f"/etc/attendance/keys/{course}/"
+key_dir = f"/tmp/attendance/keys/{course}/"
 safe_date = date.replace("/", "-")
 
 # This matches db_gen.py’s output structure
