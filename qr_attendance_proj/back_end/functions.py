@@ -24,7 +24,7 @@ def key_gen(directory):
     pub_path  = os.path.join(key_dir, "public_key.pem")
 
     if os.path.isfile(priv_path) and os.path.isfile(pub_path):
-        print(f"Keys already exist for course {course}, skipping generation.")
+        print(f"Keys already exist for course, skipping generation.")
         return
 
     # [Generate]: Public/Private key
